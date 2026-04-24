@@ -13,3 +13,10 @@ venv/
 
 # Pytest cache
 .pytest_cache/
+
+# Runtime logs
+recommender.log
+
+# Assignment materials (not part of submission)
+Instructions.docx
+Rubrics/
