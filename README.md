@@ -24,50 +24,56 @@ It matters as a portfolio project because it demonstrates three things that matt
 
 ```mermaid
 flowchart TD
-    subgraph USER["User Layer"]
-        U(["User\nNatural language query\ne.g. 'something chill for studying'"])
-        OUT(["Output\nRanked song table\n+ AI explanation"])
+    U(["User\nNatural language query\ne.g. 'something chill for studying'"])
+
+    subgraph AI_IN["① AI Layer — Query Parsing"]
+        direction LR
+        CACHE[("Prompt Cache\nephemeral · reduces latency")]
+        NLP["Query Parser · parse_user_query\nExtracts: genre · mood · energy\nModel: claude-opus-4-7"]
+        CACHE -.->|"cached system prompt"| NLP
     end
 
-    subgraph AI["AI Layer — Claude API"]
-        NLP["Query Parser\nparse_user_query\nExtracts: genre · mood · energy\nModel: claude-opus-4-7"]
-        EXP["Explanation Generator\ngenerate_ai_explanation\nRAG streaming response\nModel: claude-opus-4-7"]
-        CACHE[("Prompt Cache\nephemeral\nreduces latency on\nrepeated queries")]
+    subgraph DATA["② Data Layer"]
+        CSV[("songs.csv\n20 songs · genre · mood · energy · tempo · valence")]
     end
 
-    subgraph CORE["Core Engine — Deterministic"]
-        SCORE["Scorer\nscore_song\nGenre match: +2.0\nMood match:  +1.0\nEnergy closeness: 0–1.5"]
-        RANK["Ranker\nsorted by score ↓\nTop-K selection  K=5"]
-        DIV["Diversity Filter\noptional\ncaps 1 song per artist"]
+    subgraph CORE["③ Core Engine — Deterministic"]
+        direction LR
+        SCORE["Scorer · score_song\nGenre +2.0 · Mood +1.0 · Energy 0–1.5"]
+        RANK["Ranker\nsorted by score ↓ · Top-K  K=5"]
+        DIV["Diversity Filter\n1 song per artist"]
+        SCORE -->|"scored tuples"| RANK -->|"top-5"| DIV
     end
 
-    subgraph DATA["Data Layer"]
-        CSV[("songs.csv\n20 songs\ngenre · mood · energy\ntempo · valence · …")]
+    subgraph AI_OUT["④ AI Layer — Explanation"]
+        EXP["Explanation Generator · generate_ai_explanation\nRAG streaming · Model: claude-opus-4-7"]
     end
+
+    OUT(["Output\nRanked song table + AI explanation"])
 
     subgraph EVAL["Testing & Human Evaluation"]
-        UNIT["Unit Tests\ntest_recommender.py\npytest\nvalidates scorer + ranker"]
-        HUMAN["Human Review\n4 manual test profiles\nscans for bad suggestions"]
-        ADV["Adversarial Profile\nr&b + sad + energy 0.9\nexpose scoring edge cases"]
+        direction LR
+        UNIT["Unit Tests\ntest_recommender.py · pytest"]
+        HUMAN["Human Review\n4 manual test profiles"]
+        ADV["Adversarial Profile\nr&b + sad + energy 0.9"]
+        HUMAN -->|"finds weaknesses"| ADV
     end
 
-    U -->|"natural language"| NLP
-    CACHE -.->|"cached system prompt"| NLP
-    NLP -->|"genre · mood · energy"| SCORE
-    CSV -->|"20 song objects"| SCORE
-    SCORE -->|"scored tuples"| RANK
-    RANK -->|"top-5"| DIV
-    DIV -->|"filtered top-5"| EXP
-    NLP -->|"structured prefs"| EXP
-    U -->|"original query"| EXP
-    EXP -->|"plain-language explanation"| OUT
-    RANK -->|"ranked table"| OUT
+    %% Main pipeline
+    U          -->|"natural language"| NLP
+    NLP        -->|"genre · mood · energy"| SCORE
+    CSV        -->|"20 song objects"| SCORE
+    DIV        -->|"filtered top-5"| EXP
+    NLP        -->|"structured prefs"| EXP
+    U          -->|"original query"| EXP
+    EXP        -->|"plain-language explanation"| OUT
+    RANK       -->|"ranked table"| OUT
 
-    UNIT -->|"automated checks"| SCORE
-    UNIT -->|"automated checks"| RANK
-    OUT -->|"human inspects results"| HUMAN
-    HUMAN -->|"finds weaknesses"| ADV
-    ADV -->|"informs weight tuning"| SCORE
+    %% Validation & feedback
+    UNIT       -.->|"automated checks"| SCORE
+    UNIT       -.->|"automated checks"| RANK
+    OUT        -->|"human inspects results"| HUMAN
+    ADV        -.->|"informs weight tuning"| SCORE
 ```
 
 ### Component Roles
