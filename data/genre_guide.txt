@@ -1,0 +1,108 @@
+## pop
+Pop music features polished production, accessible song structures, and wide
+emotional range. It excels at capturing everyday emotions — joy, heartbreak,
+excitement — through catchy hooks and dynamic arrangements. High-energy pop
+(energy 0.7–1.0) suits workouts and parties; mid-tempo pop (energy 0.4–0.6)
+works for commutes and social gatherings. Listeners expect melodic vocals,
+strong rhythmic drive, and a produced, radio-ready sound.
+
+## lofi
+Lo-fi (low-fidelity) music is defined by its deliberately imperfect aesthetic:
+vinyl crackle, ambient room noise, soft drum loops with minimal variation. It
+creates a sense of comfortable solitude — ideal for studying, reading, or quiet
+focus. Energy levels are consistently low (0.2–0.5) and tempo rarely surprises
+(60–90 BPM). The genre's appeal is its predictability; it stays in the
+background without demanding attention, making it the go-to recommendation for
+focus and relaxation requests.
+
+## rock
+Rock music is built around electric guitars, driving rhythms, and an emphasis
+on live-band energy. It spans a wide emotional range — from anthemic and
+triumphant to dark and brooding — but always carries a sense of physical
+presence and momentum. High-energy rock (0.7–1.0, tempo 130–160 BPM) suits
+intense workouts or road trips; mid-energy rock suits focus or emotional
+processing. The genre is defined by its sense of authenticity and power.
+
+## r&b
+R&B (rhythm and blues) blends soulful vocals with groove-oriented production.
+Its hallmarks are expressive singing, smooth chord progressions, and an
+emotional focus on love, longing, sensuality, and vulnerability. Energy levels
+are typically moderate: slow R&B sits between 0.3 and 0.5, contemporary R&B
+reaches 0.6–0.75. The genre rewards attentive listening and suits intimate,
+late-night, or emotionally reflective moods.
+
+## metal
+Metal prioritises intensity above all else: downtuned guitars, double-bass
+drumming, and confrontational energy. Tempos are fast (150–180 BPM) and energy
+is consistently high (0.85–1.0). Metal suits high-exertion physical activity
+or emotional catharsis. It is the clearest match for "intense" mood and the
+highest energy requests in the catalog. Listeners expect aggression, power, and
+technical precision.
+
+## indie
+Indie music favours authentic, boutique production over commercial polish. It
+values emotional honesty, literary lyrics, and sonic experimentation. Energy
+and tempo vary widely — indie can be quiet and introspective or loud and
+anthemic. Energy typically ranges from 0.3 to 0.8. The common thread is a
+sense of personality and independence from mainstream formulas. Suits listeners
+who want something that feels personal and genuine.
+
+## jazz
+Jazz is characterised by improvisation, syncopated rhythms, and rich harmonic
+language. It ranges from ambient background music (quiet piano trios, bossa
+nova at 0.2–0.4 energy) to high-energy big band. Coffee-shop jazz sits between
+0.3 and 0.5 energy. The genre rewards passive listening as much as active
+attention and suits relaxed social settings, late-night introspection, or quiet
+work sessions.
+
+## electronic
+Electronic music spans calm ambient textures to high-energy dance floor
+bangers. Sub-genres differ sharply: ambient sits at 0.1–0.35 energy, synthwave
+at 0.6–0.8, EDM at 0.85–1.0. Production is synthesiser-driven with minimal
+acoustic elements. High-energy electronic (EDM) suits parties and exercise;
+lower-energy electronic (ambient, synthwave) suits focus or late-night moods.
+Tempo and energy are the dominant differentiators within this genre family.
+
+## hip-hop
+Hip-hop is built on sampled loops, boom-bap or trap drum patterns, and
+rhythmically driven vocal delivery. Energy varies widely by sub-genre: chill
+hip-hop sits at 0.4–0.65, trap at 0.7–0.85. The genre is versatile — it suits
+both laid-back background listening and high-energy sessions. Lyrical content
+and flow are central to the experience, making it a strong match for both
+"chill" and "intense" mood requests depending on the specific track.
+
+## ambient
+Ambient music prioritises texture and atmosphere over melody or rhythm. Energy
+is consistently very low (0.1–0.35), tempo is slow or absent, and the goal is
+immersive background sound rather than active listening. Suits meditation,
+sleep, focus, or any context where the listener wants sound that occupies space
+without demanding attention. The purest form of background music.
+
+## classical
+Classical music spans centuries of composition styles, but in this context
+refers to orchestral or solo instrumental pieces. Energy is low to moderate
+(0.1–0.5), tempo varies by piece, and the focus is on melodic and harmonic
+development. Suits introspective, romantic, or focused moods. High acousticness
+and valence are typical. The genre rewards attentive listening but also works
+as refined background music.
+
+## synthwave
+Synthwave is a retro-futuristic electronic genre built on 1980s synthesiser
+aesthetics: pulsing arpeggios, gated reverb drums, and neon-soaked atmosphere.
+Energy sits between 0.6 and 0.85, tempo typically 100–130 BPM. Mood is usually
+moody, nostalgic, or cinematic. Suits late-night drives, focused creative work,
+or any request with a "dark" or "atmospheric" edge.
+
+## edm
+EDM (Electronic Dance Music) is engineered for maximum floor energy: heavy
+basslines, four-on-the-floor kick drums, and euphoric build-drop structures.
+Energy is 0.85–1.0, tempo 125–145 BPM. The genre is almost exclusively matched
+to euphoric, happy, or intense moods and suits parties, pre-workout hype, or
+any high-energy request. It is the highest-energy genre in the catalog.
+
+## country
+Country music centres on storytelling, acoustic instrumentation (guitar, fiddle,
+pedal steel), and themes of home, nostalgia, and rural life. Energy is
+moderate (0.3–0.65), tempo is relaxed to mid (85–115 BPM). Mood skews toward
+nostalgic, happy, or relaxed. High acousticness is characteristic. Suits
+listeners who want something warm, unpretentious, and emotionally grounded.

@@ -14,13 +14,22 @@ This system suggests up to 5 songs from a 20-song catalog based on a user's pref
 
 ## 3. How the Model Works
 
-For every song in the catalog, the system asks three questions:
+**Step 1 — Natural language parsing (`claude-haiku-4-5`):**
+The user types a free-form request ("something chill to study to"). Claude Haiku extracts three structured values: `genre`, `mood`, and `energy` (0–1 float). The system prompt is cached with `cache_control: ephemeral` so repeat calls skip re-processing it. If the user's query is a refinement ("same but more intense"), the previous turn's preferences are injected as context so only the changed dimension is updated.
 
-1. Does this song's genre match what the user likes? If yes, it adds 2 points.
-2. Does this song's mood match what the user wants to feel? If yes, it adds 1 point.
-3. How close is the song's energy level to what the user wants? Songs that are closer get up to 1.5 points; songs far away get fewer.
+**Step 2 — Deterministic scoring (`recommender.py`):**
+For every song in the catalog the scorer awards points across five signals, then sorts descending and returns the top 5:
 
-After scoring all songs, it sorts them from highest to lowest score and returns the top 5. Each result comes with a plain-language explanation of which criteria it matched — so you can always see why a song was recommended.
+1. **Genre** — exact match earns the full genre weight (default +2.0); a related genre from `GENRE_FAMILIES` earns 50% (e.g. a pop request gets partial credit for indie pop songs).
+2. **Mood** — exact string match earns the full mood weight (default +1.0).
+3. **Energy** — continuous partial credit based on how close the song's energy (0–1) is to the user's target; closer = more points, up to the energy weight (default 1.5).
+4. **Valence** — rewards songs whose musical positivity aligns with the mood's emotional tone (e.g. a "happy" request scores higher against high-valence songs). Weight varies by scoring mode.
+5. **Danceability** — optional bonus used in `energy-focused` and `vibe` scoring modes.
+
+Five **scoring mode** presets let users shift the weight balance: `default` (balanced), `genre-first`, `mood-first`, `energy-focused`, and `vibe` (all signals equal).
+
+**Step 3 — AI explanation (`claude-sonnet-4-6`):**
+The top-5 results plus a genre background section from `data/genre_guide.txt` (second RAG source) are injected into Claude Sonnet's context. The explanation is streamed token-by-token and shaped by one of four **personas** (baseline, casual, dj, critic), each with a few-shot example that demonstrates the required tone. The persona system prompt is also prompt-cached.
 
 ---
 
@@ -41,11 +50,11 @@ The catalog contains 20 songs stored in `data/songs.csv`. The 10 starter songs c
 
 ## 6. Limitations and Bias
 
-- **Genre dominance:** The +2.0 genre bonus is so large that a song with a matching genre but wrong mood and low energy can still outrank a song that closely matches energy and mood in a different genre. This was confirmed in the adversarial test — "Velvet Rain" (r&b/sad, energy=0.38) ranked #1 for a user who wanted sad r&b at energy=0.9, despite being an energy mismatch.
-- **Exact string matching:** "indie pop" and "pop" are treated as completely different genres even though they overlap musically. A user who likes pop will never see indie pop songs unless they happen to match on mood.
-- **No diversity:** The top 5 often cluster around the same genre. A lofi user gets all lofi songs at the top with little variety.
-- **Fixed profile:** Real users have shifting moods and contexts. This system treats every session identically.
-- **Small catalog:** With only 20 songs, some genre searches return mostly energy-only matches in positions 3–5, not because the system failed but because there are simply no better options in the data.
+- **Genre dominance (in default mode):** The +2.0 genre bonus means any same-genre song can outrank a cross-genre song with a better energy and mood match. The adversarial test confirmed this — "Velvet Rain" (r&b/sad, energy=0.38) ranked #1 for a request of sad r&b at energy=0.9 because genre+mood (+3.0) outweighed the energy penalty. Switching to `energy-focused` mode shifts this balance.
+- **Mood uses exact string matching:** Unlike genre (which has family-based partial credit), mood matching is binary — "focused" and "chill" are treated as completely unrelated even if the songs sound similar. A user asking for "calm" will not surface songs tagged "relaxed" or "chill."
+- **Genre families are approximate:** The `GENRE_FAMILIES` dictionary gives partial credit for musically adjacent genres (pop ↔ indie pop, rock ↔ metal), but the groupings are hand-authored and subjective. A genre not in the family table earns zero credit even if it is adjacent in practice.
+- **No cross-session memory:** Session refinement ("same but louder") works within a single Streamlit session but preferences reset on reload. Every fresh session starts cold.
+- **Catalog-size bias:** With 70 songs, niche genre searches can still exhaust good matches by position 3–5. The system always returns 5 results and cannot signal low confidence — positions 4–5 may be energy-only matches from unrelated genres.
 
 ---
 
@@ -77,19 +86,41 @@ Running the pop/happy profile with adjusted weights pushed "Rooftop Lights" (ind
 
 ## 8. Future Work
 
-- **Softer genre matching:** Use genre similarity groups (e.g., pop ≈ indie pop ≈ dance pop) instead of exact string equality to reduce the genre wall effect.
-- **Dynamic weights by context:** Let users specify whether they care more about mood, energy, or genre — and adjust weights accordingly rather than using one fixed set.
-- **Diversity constraint:** Prevent the top 5 from being all the same genre by adding a small penalty for repeated genres in the ranked list.
-- **More features in scoring:** Valence (musical positivity) and tempo_bpm are already loaded but unused. Adding them would give the system a better sense of a song's feel, not just its label.
+- **Mood family matching:** Extend the genre-family partial-credit approach to mood — "chill" and "relaxed" are sonically close and should score partial credit against each other.
+- **Confidence signalling:** Surface a "no good matches" message when all top-5 scores fall below a threshold, so users know the catalog lacks relevant songs rather than assuming the rankings are equally strong.
+- **Genre diversity filter:** The artist diversity filter (one song per artist) is already implemented; a genre diversity variant would prevent all top-5 results from clustering in one genre.
+- **Tempo (BPM) scoring:** Tempo is loaded from the CSV but not used. Matching BPM range to activity type (e.g. 60–80 BPM for studying, 120–140 for cardio) would add a meaningful fourth dimension.
+- **Cross-session memory:** Persist user preferences across sessions so returning users do not start cold every time.
 
 ---
 
-## 9. Personal Reflection
+## 9. Reflection and Ethics
 
-**Biggest learning moment:** The biggest learning moment was realizing that weights are design decisions, not just numbers. When I halved the genre weight from +2.0 to +1.0, the entire top-5 list reshuffled — songs that previously had no chance suddenly competed because energy and mood could finally make a difference. That one change showed me that every recommender system is really a statement about what matters most to the people who built it, not just the people using it. Engineers at Spotify or YouTube are making those same choices at a scale that affects millions of listeners, often invisibly.
+### What Are the Limitations or Biases in Your System?
 
-**How AI tools helped and when I double-checked:** AI tools helped most with boilerplate structure — generating the CSV format for new songs, suggesting the `tabulate` library for formatting, and explaining the difference between `.sort()` and `sorted()`. But I had to double-check the scoring logic carefully because the AI-suggested energy formula worked mathematically but I needed to verify it actually rewarded *closeness* and not just *highness*. I also had to validate that the diversity penalty correctly de-duplicated by artist rather than by genre, since an early version would have been too aggressive. The rule I learned: AI suggestions are a fast starting point, but the only way to trust them is to trace through an example by hand.
+VibeFinder has three biases worth naming explicitly:
 
-**What surprised me about simple algorithms feeling like recommendations:** The most surprising thing was how quickly the output started feeling "right" even with just three scoring rules. When the Chill Lofi profile returned Library Rain and Midnight Coding at the top with scores of 4.50 and 4.39, it genuinely looked like something Spotify might suggest. The illusion of intelligence comes from the combination of ranking (so only the best appear), explainability (so the reasons feel logical), and enough variety in the catalog that the top result isn't always obvious. The system has no understanding of music at all — it just counts matches — but presented in a clean table with reasons, it reads like it does.
+- **Genre-dominance bias.** The +2.0 genre bonus is so large that any song matching on genre beats every cross-genre song, even when mood and energy are both wrong. The adversarial profile (r&b + sad + energy 0.9) returned a slow ballad at #1 because genre + mood combined (+3.0 pts) outweighed a near-maximum energy penalty. This is not a bug — it reflects a deliberate design choice — but it means the system will always favor stylistic familiarity over dynamic fit.
+- **Exact-string genre bias.** "indie pop" is treated as completely unrelated to "pop." A pop fan never sees indie pop songs unless they happen to share a mood tag. This is a direct consequence of using `==` for matching rather than any semantic similarity, and it silently excludes a large slice of the catalog from ever competing for genre-matched profiles.
+- **Catalog-size bias.** With only 20 songs, positions 3–5 in some profiles are energy-only matches from unrelated genres — not because the algorithm failed, but because there are no better options. The system cannot distinguish between "no relevant songs exist" and "no relevant songs are in this catalog," so it fills the list anyway.
 
-**What I would try next:** If I extended this project, I would first add valence to the scoring function since it is already loaded from the CSV and captures whether a song sounds positive or negative — a dimension that mood labels alone miss. Second, I would implement fuzzy genre matching so that "indie pop" scores partial credit against a "pop" preference rather than zero. Third, I would build a simple feedback loop where the user rates the top recommendation and the weights adjust slightly based on their response, turning the static profile into something that learns over a session.
+### Could Your AI Be Misused, and How Would You Prevent That?
+
+The immediate misuse risk for a music recommender is low compared to a content moderation or hiring system, but two realistic risks exist:
+
+1. **Playlist manipulation / payola analog.** If the catalog were expanded and controlled by a commercial party, the scoring weights could be tuned to systematically surface specific songs or artists regardless of actual fit — the same genre-dominance effect that is currently a limitation would become a tool for promotion. The mitigation is weight transparency: publishing the exact formula means any bias is auditable rather than hidden.
+2. **Filter bubble reinforcement.** Because the genre bonus is so strong, a user who always asks for "pop" will almost never see songs from adjacent genres, even when those songs might be a better energy or mood match. Over time this could narrow rather than expand a listener's taste. The diversity filter (`diversity=True` in `recommend_songs`) partially addresses this by capping each artist at one appearance, but it does not address genre diversity at all.
+
+### What Surprised You While Testing Your AI's Reliability?
+
+The most surprising result was not that the adversarial profile failed — it was designed to fail — but *how cleanly* it failed. "Velvet Rain" scored 3.72 (a comfortable margin above #2) despite its energy being 0.38 against a target of 0.9. I expected the energy penalty to at least make it close. Watching a slow ballad win a request for driving intensity by a clear margin showed that the scoring formula has a hard ceiling on how much any single continuous dimension can matter once two binary bonuses fire together.
+
+The second surprise was how quickly the catalog limit became visible in positions 3–5. For the rock and r&b profiles, the bottom of the top-5 list was filled by songs from completely unrelated genres that happened to share an energy range. The system had no way to say "I don't have enough good matches" — it always returned five results with equal confidence, which is a quiet form of overconfidence.
+
+### Collaboration with AI During This Project
+
+Claude was used as a coding and design assistant throughout this project.
+
+**Helpful suggestion:** When I was writing the query parser, Claude suggested adding `cache_control: {"type": "ephemeral"}` to the system prompt in `parse_user_query`. The reasoning was that the system prompt — which lists allowed genres, moods, and the output format — is identical on every call, so caching it means only the first call pays the full processing cost and every repeat call is faster and cheaper. This was a concrete, immediately useful improvement that I would not have reached for on my own at that stage, and it is now a core part of the architecture.
+
+**Flawed suggestion:** Early in the design phase, Claude suggested using a second LLM call to do the ranking itself — feeding all 20 songs to Claude and asking it to pick the best five. The suggestion was framed as "more flexible" because Claude could reason about nuanced genre relationships (e.g. knowing that indie pop is adjacent to pop) in a way that exact-string matching cannot. This was wrong for the project's goals. An LLM-based ranker would be non-deterministic (two identical queries could return different ranked lists), impossible to unit-test reliably, and much harder to explain to a user. Keeping retrieval rule-based — and using Claude only at the edges for parsing and explanation — was the right call, and pushing back on that suggestion led directly to the clearest design principle in the whole system.

@@ -19,3 +19,53 @@ id,title,artist,genre,mood,energy,tempo_bpm,valence,danceability,acousticness
 18,Corner Store Dreams,K-Flow,hip-hop,nostalgic,0.55,88,0.69,0.78,0.22
 19,Velvet Rain,Silk & Soul,r&b,sad,0.38,82,0.62,0.52,0.58
 20,Meadow Lark,River Dust,country,happy,0.50,112,0.83,0.65,0.80
+21,Dance All Night,SolarBeats,pop,happy,0.88,128,0.90,0.92,0.10
+22,Summer Fade,Pastel Days,pop,sad,0.45,96,0.42,0.58,0.32
+23,Electric Youth,City Glow,pop,intense,0.86,136,0.76,0.88,0.07
+24,Rainy Window,Paper Lanterns,lofi,chill,0.27,67,0.54,0.46,0.89
+25,Tea & Vinyl,BeatDrift,lofi,chill,0.33,74,0.62,0.54,0.83
+26,Deep Work,LoRoom,lofi,focused,0.37,76,0.51,0.56,0.80
+27,Neon Highway,Voltage Co.,rock,intense,0.87,146,0.54,0.73,0.11
+28,Mountain Echo,Open Fields,rock,happy,0.72,128,0.78,0.74,0.36
+29,Broken Glass,Steel Forge,rock,sad,0.64,118,0.31,0.60,0.23
+30,Slow Dance,Silk & Soul,r&b,romantic,0.41,77,0.81,0.50,0.66
+31,City Lights,Nova Soul,r&b,chill,0.58,93,0.68,0.71,0.37
+32,Midnight Kiss,Nova Soul,r&b,romantic,0.56,88,0.83,0.64,0.46
+33,Vortex Rising,Deadweight,metal,intense,0.98,172,0.27,0.63,0.04
+34,Blood Moon,Steel Forge,metal,sad,0.88,158,0.24,0.55,0.07
+35,Paper Planes,Drift State,indie,happy,0.62,112,0.81,0.68,0.56
+36,Golden Rust,Indigo Parade,indie,sad,0.39,90,0.37,0.43,0.73
+37,Wildflower Walk,Open Fields,indie,chill,0.44,98,0.73,0.57,0.69
+38,Telescope,Nova Drift,indie,focused,0.51,102,0.61,0.55,0.48
+39,Blue Note Evening,Slow Stereo,jazz,chill,0.31,84,0.71,0.47,0.93
+40,Late Set,Slow Stereo,jazz,relaxed,0.27,78,0.76,0.41,0.96
+41,Uptown Swing,Brass & Keys,jazz,happy,0.68,138,0.83,0.75,0.61
+42,Pulse Drive,Neon Circuit,electronic,intense,0.90,138,0.54,0.88,0.05
+43,Aurora Float,Orbit Bloom,electronic,chill,0.29,84,0.66,0.39,0.89
+44,Strobe Garden,Voltage,edm,happy,0.95,132,0.86,0.96,0.03
+45,Block Party,K-Flow,hip-hop,happy,0.79,103,0.77,0.89,0.17
+46,Soul Search,Nova Soul,hip-hop,sad,0.47,84,0.43,0.64,0.36
+47,Trap Dynasty,Voltage,hip-hop,intense,0.86,142,0.44,0.83,0.07
+48,Morning Prelude,Clara Voss,classical,focused,0.24,71,0.83,0.24,0.98
+49,Storm Sonata,Clara Voss,classical,intense,0.57,132,0.46,0.37,0.96
+50,Lonesome Road,River Dust,country,sad,0.37,90,0.53,0.47,0.83
+51,Neon Pulse,SynthCity,synthwave,happy,0.82,116,0.79,0.84,0.06
+52,Retrowave Rider,Dusk Drive,synthwave,intense,0.85,120,0.54,0.77,0.08
+53,Velvet Static,Rustic Fuzz,synthwave,chill,0.52,96,0.64,0.68,0.18
+54,Cloud Atlas,Orbit Bloom,ambient,sad,0.18,52,0.28,0.25,0.96
+55,Focus Drift,Static Sleep,ambient,focused,0.24,62,0.55,0.30,0.94
+56,Gravity Well,Nova Drift,ambient,romantic,0.26,58,0.72,0.28,0.97
+57,Circuit Bloom,Neon Circuit,electronic,happy,0.87,130,0.82,0.90,0.04
+58,Soft Signal,Drift State,electronic,romantic,0.50,90,0.76,0.61,0.31
+59,Chill Voltage,Neon Circuit,electronic,chill,0.40,82,0.62,0.55,0.42
+60,Desert Wind,Steel Forge,rock,chill,0.48,95,0.65,0.53,0.45
+61,Sunset Chord,Voltline,rock,romantic,0.54,102,0.78,0.58,0.52
+62,Twilight Drive,Rustic Fuzz,rock,moody,0.69,118,0.42,0.64,0.28
+63,Warm December,Nova Soul,r&b,happy,0.73,106,0.86,0.81,0.28
+64,Night Garden,Silk & Soul,r&b,focused,0.44,85,0.62,0.55,0.48
+65,Fallen Leaves,Slow Stereo,jazz,sad,0.25,72,0.30,0.36,0.94
+66,City Swing,Brass & Keys,jazz,intense,0.76,144,0.71,0.80,0.65
+67,Lullaby Drive,Pastel Days,pop,chill,0.42,88,0.68,0.59,0.48
+68,Pink Skies,SolarBeats,pop,romantic,0.55,98,0.82,0.67,0.38
+69,Wildfire,Open Fields,indie,intense,0.78,134,0.54,0.72,0.29
+70,Coastal Rain,Paper Lanterns,lofi,sad,0.28,68,0.36,0.42,0.88

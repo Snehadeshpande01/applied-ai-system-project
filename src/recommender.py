@@ -1,93 +1,14 @@
-from typing import List, Dict, Tuple, Optional
-from dataclasses import dataclass
+from typing import List, Dict, Tuple
 
-@dataclass
-class Song:
-    """
-    Represents a song and its attributes.
-    Required by tests/test_recommender.py
-    """
-    id: int
-    title: str
-    artist: str
-    genre: str
-    mood: str
-    energy: float
-    tempo_bpm: float
-    valence: float
-    danceability: float
-    acousticness: float
-
-@dataclass
-class UserProfile:
-    """
-    Represents a user's taste preferences.
-    Required by tests/test_recommender.py
-    """
-    favorite_genre: str
-    favorite_mood: str
-    target_energy: float
-    likes_acoustic: bool
-
-class Recommender:
-    """
-    OOP implementation of the recommendation logic.
-    Required by tests/test_recommender.py
-    """
-    def __init__(self, songs: List[Song]):
-        self.songs = songs
-
-    def recommend(self, user: UserProfile, k: int = 5) -> List[Song]:
-        scored = []
-        for song in self.songs:
-            score = 0.0
-
-            if song.genre == user.favorite_genre:
-                score += 2.0
-
-            if song.mood == user.favorite_mood:
-                score += 1.0
-
-            energy_diff = abs(song.energy - user.target_energy)
-            energy_points = 1.5 * (1 - energy_diff)
-            score += energy_points
-
-            # Optional: acoustic preference
-            if user.likes_acoustic:
-                score += song.acousticness * 0.5  # small bonus
-
-            scored.append((song, score))
-
-        # Sort by score descending
-        scored.sort(key=lambda x: x[1], reverse=True)
-        return [song for song, _ in scored[:k]]
-
-    def explain_recommendation(self, user: UserProfile, song: Song) -> str:
-        reasons = []
-
-        if song.genre == user.favorite_genre:
-            reasons.append("genre match (+2.0)")
-
-        if song.mood == user.favorite_mood:
-            reasons.append("mood match (+1.0)")
-
-        energy_diff = abs(song.energy - user.target_energy)
-        energy_points = 1.5 * (1 - energy_diff)
-        reasons.append(f"energy closeness (+{energy_points:.1f})")
-
-        if user.likes_acoustic and song.acousticness > 0.5:
-            reasons.append("acoustic preference")
-
-        return "This song " + ", ".join(reasons) + "."
 
 def load_songs(csv_path: str) -> List[Dict]:
-    """Load songs from a CSV file and return a list of dicts with numeric fields cast to float/int."""
+    """Load songs from CSV and return list of dicts with numeric fields cast."""
     import csv
     songs = []
     with open(csv_path, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            song = {
+            songs.append({
                 'id': int(row['id']),
                 'title': row['title'],
                 'artist': row['artist'],
@@ -97,41 +18,114 @@ def load_songs(csv_path: str) -> List[Dict]:
                 'tempo_bpm': float(row['tempo_bpm']),
                 'valence': float(row['valence']),
                 'danceability': float(row['danceability']),
-                'acousticness': float(row['acousticness'])
-            }
-            songs.append(song)
+                'acousticness': float(row['acousticness']),
+            })
     return songs
 
-# Challenge 2: Scoring mode weight presets
-SCORING_MODES = {
-    "default":        {"genre": 2.0, "mood": 1.0, "energy": 1.5},
-    "genre-first":    {"genre": 3.5, "mood": 0.5, "energy": 0.5},
-    "mood-first":     {"genre": 1.0, "mood": 2.5, "energy": 1.0},
-    "energy-focused": {"genre": 0.5, "mood": 0.5, "energy": 3.0},
+
+# ── Genre families for partial-credit matching ────────────────────────────────
+# Related genres earn 50% of the genre weight instead of 0.
+GENRE_FAMILIES: Dict[str, set] = {
+    "pop":        {"pop", "indie pop"},
+    "indie pop":  {"indie pop", "pop", "indie"},
+    "indie":      {"indie", "indie pop"},
+    "electronic": {"electronic", "edm", "synthwave"},
+    "edm":        {"edm", "electronic"},
+    "synthwave":  {"synthwave", "electronic"},
+    "hip-hop":    {"hip-hop", "r&b"},
+    "r&b":        {"r&b", "hip-hop"},
+    "rock":       {"rock", "metal", "indie"},
+    "metal":      {"metal", "rock"},
+    "lofi":       {"lofi", "ambient"},
+    "ambient":    {"ambient", "lofi"},
+    "jazz":       {"jazz"},
+    "classical":  {"classical"},
+    "country":    {"country"},
 }
 
+# ── Mood → target valence (musical positivity 0–1) ───────────────────────────
+# Used to reward songs whose valence aligns with the emotional tone requested.
+MOOD_VALENCE_TARGET: Dict[str, float] = {
+    "happy":     0.82,
+    "euphoric":  0.90,
+    "romantic":  0.78,
+    "nostalgic": 0.62,
+    "relaxed":   0.65,
+    "calm":      0.62,
+    "chill":     0.60,
+    "focused":   0.55,
+    "moody":     0.38,
+    "sad":       0.28,
+    "intense":   0.50,  # neutral — can be positive or aggressive
+}
+
+# ── Scoring mode weight presets ───────────────────────────────────────────────
+SCORING_MODES: Dict[str, Dict[str, float]] = {
+    "default":        {"genre": 2.0, "mood": 1.0, "energy": 1.5, "valence": 0.5, "danceability": 0.0},
+    "genre-first":    {"genre": 3.5, "mood": 0.5, "energy": 0.5, "valence": 0.3, "danceability": 0.0},
+    "mood-first":     {"genre": 1.0, "mood": 2.5, "energy": 1.0, "valence": 0.8, "danceability": 0.0},
+    "energy-focused": {"genre": 0.5, "mood": 0.5, "energy": 3.0, "valence": 0.3, "danceability": 0.3},
+    "vibe":           {"genre": 1.5, "mood": 1.5, "energy": 1.5, "valence": 1.0, "danceability": 0.5},
+}
+
+
 def score_song(user_prefs: Dict, song: Dict, mode: str = "default") -> Tuple[float, List[str]]:
-    """Score a single song against user preferences; returns (total_score, list_of_reason_strings)."""
+    """Score a single song against user preferences.
+
+    Scoring components:
+      - Genre: full points for exact match; 50% for same genre family.
+      - Mood: full points for exact match.
+      - Energy: continuous partial credit based on absolute difference.
+      - Valence: rewards songs whose musical positivity aligns with the mood.
+      - Danceability: optional bonus weighted by the scoring mode.
+    """
     weights = SCORING_MODES.get(mode, SCORING_MODES["default"])
     score = 0.0
     reasons = []
 
+    # ── Genre ─────────────────────────────────────────────────────────────────
     if song['genre'] == user_prefs['genre']:
         pts = weights["genre"]
         score += pts
         reasons.append(f"genre match (+{pts})")
+    else:
+        family = GENRE_FAMILIES.get(user_prefs['genre'], set())
+        if song['genre'] in family:
+            pts = round(weights["genre"] * 0.5, 2)
+            score += pts
+            reasons.append(f"genre family (+{pts})")
 
+    # ── Mood ──────────────────────────────────────────────────────────────────
     if song['mood'] == user_prefs['mood']:
         pts = weights["mood"]
         score += pts
         reasons.append(f"mood match (+{pts})")
 
+    # ── Energy ────────────────────────────────────────────────────────────────
     energy_diff = abs(song['energy'] - user_prefs['energy'])
-    energy_points = weights["energy"] * (1 - energy_diff)
-    score += energy_points
-    reasons.append(f"energy closeness (+{energy_points:.1f})")
+    energy_pts = weights["energy"] * (1 - energy_diff)
+    score += energy_pts
+    reasons.append(f"energy closeness (+{energy_pts:.1f})")
+
+    # ── Valence ───────────────────────────────────────────────────────────────
+    valence_w = weights.get("valence", 0.0)
+    if valence_w > 0:
+        target_v = MOOD_VALENCE_TARGET.get(user_prefs.get("mood", ""), 0.5)
+        valence_pts = valence_w * (1 - abs(song['valence'] - target_v))
+        score += valence_pts
+        if valence_pts >= 0.25:
+            reasons.append(f"valence fit (+{valence_pts:.1f})")
+
+    # ── Danceability ──────────────────────────────────────────────────────────
+    dance_w = weights.get("danceability", 0.0)
+    if dance_w > 0:
+        dance_pts = dance_w * song['danceability']
+        score += dance_pts
+        if dance_pts >= 0.15:
+            reasons.append(f"danceability (+{dance_pts:.1f})")
 
     return score, reasons
+
 
 def recommend_songs(
     user_prefs: Dict,
@@ -140,28 +134,28 @@ def recommend_songs(
     mode: str = "default",
     diversity: bool = False,
 ) -> List[Tuple[Dict, float, str]]:
-    """Score every song and return top-k results; supports scoring modes and artist diversity penalty."""
+    """Score every song and return top-k results.
+
+    Supports scoring modes, genre-family partial credit, valence/danceability
+    signals, and optional artist-diversity deduplication.
+    """
     scored = []
     for song in songs:
         score, reasons = score_song(user_prefs, song, mode=mode)
-        explanation = ", ".join(reasons)
-        scored.append((song, score, explanation))
+        scored.append((song, score, ", ".join(reasons)))
 
-    scored = sorted(scored, key=lambda x: x[1], reverse=True)
+    scored.sort(key=lambda x: x[1], reverse=True)
 
-    # Challenge 3: Diversity penalty — cap each artist at 1 appearance in top results
     if diversity:
-        seen_artists = set()
-        diverse = []
-        penalized = []
+        seen_artists: set = set()
+        diverse, penalized = [], []
         for item in scored:
             artist = item[0]['artist']
             if artist not in seen_artists:
                 seen_artists.add(artist)
                 diverse.append(item)
             else:
-                # Keep penalized songs available if we run out of diverse ones
                 penalized.append(item)
-        scored = (diverse + penalized)
+        scored = diverse + penalized
 
     return scored[:k]

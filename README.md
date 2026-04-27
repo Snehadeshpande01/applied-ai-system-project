@@ -18,6 +18,12 @@ It matters as a portfolio project because it demonstrates three things that matt
 
 ---
 
+## Demo Video
+
+[![VibeFinder Walkthrough](https://www.loom.com/share/437959ad78db41a4978efa2448e89f19)](https://www.loom.com/share/437959ad78db41a4978efa2448e89f19)
+
+---
+
 ## Section 2: Design and Architecture
 
 ### System Diagram
@@ -29,7 +35,7 @@ flowchart TD
     subgraph AI_IN["① AI Layer — Query Parsing"]
         direction LR
         CACHE[("Prompt Cache\nephemeral · reduces latency")]
-        NLP["Query Parser · parse_user_query\nExtracts: genre · mood · energy\nModel: claude-opus-4-7"]
+        NLP["Query Parser · parse_user_query\nExtracts: genre · mood · energy\nModel: claude-haiku-4-5"]
         CACHE -.->|"cached system prompt"| NLP
     end
 
@@ -46,7 +52,7 @@ flowchart TD
     end
 
     subgraph AI_OUT["④ AI Layer — Explanation"]
-        EXP["Explanation Generator · generate_ai_explanation\nRAG streaming · Model: claude-opus-4-7"]
+        EXP["Explanation Generator · generate_ai_explanation\nRAG streaming · 4 personas · Model: claude-sonnet-4-6"]
     end
 
     OUT(["Output\nRanked song table + AI explanation"])
@@ -80,12 +86,18 @@ flowchart TD
 
 | Component | File | Role |
 |---|---|---|
-| **Query Parser** | `ai_recommender.py` | Translates natural language into structured genre / mood / energy values using Claude |
-| **Scorer** | `recommender.py` | Deterministic rule engine — assigns a 0–4.5 point score to every song |
-| **Ranker** | `recommender.py` | Sorts all scored songs, applies optional artist-diversity penalty, returns top-K |
-| **Explanation Generator** | `ai_recommender.py` | Feeds top-5 results back to Claude as context; streams a conversational explanation |
-| **Song Catalog** | `data/songs.csv` | Static 20-song data store (genre, mood, energy, tempo, valence, …) |
-| **Prompt Cache** | `ai_recommender.py` | Caches the stable system prompt for `parse_user_query` to cut latency on repeat calls |
+| **Query Parser** | `ai_recommender.py` | Translates natural language into structured genre / mood / energy values using `claude-haiku-4-5` |
+| **Scorer** | `recommender.py` | Deterministic rule engine — 5 scoring signals: genre, mood, energy, valence, danceability |
+| **Ranker** | `recommender.py` | Sorts all scored songs, applies optional artist-diversity dedup, returns top-K |
+| **Scoring Modes** | `recommender.py` | 5 weight presets (`default`, `genre-first`, `mood-first`, `energy-focused`, `vibe`) selectable per query |
+| **Genre Families** | `recommender.py` | Related genres earn 50% genre bonus (e.g. pop ↔ indie pop, rock ↔ metal, lofi ↔ ambient) |
+| **Explanation Generator** | `ai_recommender.py` | Feeds top-5 results + genre guide back to `claude-sonnet-4-6`; streams a conversational explanation |
+| **AI Personas** | `ai_recommender.py` | 4 explanation styles: `baseline` (warm), `casual` (friend), `dj` (technical), `critic` (analytical) |
+| **RAG Genre Guide** | `data/genre_guide.txt` | Second retrieval source — genre background injected alongside song results for richer explanations |
+| **Song Catalog** | `data/songs.csv` | Static 70-song data store (genre, mood, energy, tempo, valence, danceability, acousticness) |
+| **Prompt Cache** | `ai_recommender.py` | Caches both system prompts with `cache_control: ephemeral` to cut latency on repeat calls |
+| **Session Refinement** | `ai_recommender.py` | Prior preferences injected as context so follow-up queries ("same but sadder") resolve correctly |
+| **Streamlit UI** | `app.py` | Full web interface with animated results, persona selector, scoring mode controls, session history |
 | **Unit Tests** | `tests/test_recommender.py` | Pytest suite that validates scorer ranking and explanation output |
 | **Human Evaluation** | `README.md` / manual | Four curated profiles run by hand; results analysed for unexpected or bad suggestions |
 | **Adversarial Testing** | `src/main.py` | Deliberately mismatched profile (r&b + sad + high energy) to surface scoring edge cases |
@@ -149,19 +161,27 @@ The system has two clearly separated layers. The **deterministic core** (scorer 
    $env:ANTHROPIC_API_KEY="your-key-here"
    ```
 
-5. **Run the interactive chat interface**
+5. **Run the Streamlit web UI** (recommended — full visual interface)
+
+   ```bash
+   streamlit run app.py
+   ```
+
+   Open [http://localhost:8501](http://localhost:8501) in your browser. The sidebar lets you switch scoring modes, toggle the RAG genre guide, and enable artist diversity. Results stream live with animated score rings.
+
+6. **Run the interactive chat interface** (terminal alternative)
 
    ```bash
    python -m src.chat
    ```
 
-6. **Run the batch demo** (shows all four test profiles without the API)
+7. **Run the batch demo** (shows all four test profiles without the API)
 
    ```bash
    python -m src.main
    ```
 
-7. **Run tests**
+8. **Run tests**
 
    ```bash
    pytest
@@ -268,13 +288,29 @@ Retrieval is kept rule-based so every recommendation can be explained by a formu
 
 The query parser (Step 1) outputs a tiny structured object (`{genre, mood, energy}`) that the scorer can consume without any further AI involvement. If the Claude call fails or returns malformed JSON, the system catches the error and tells the user — it never silently produces garbage rankings. Keeping the AI at the edges (input parsing + output explanation) means the core logic is always testable without API access.
 
-### Why prompt caching on the query parser?
+### Why two different Claude models for parsing vs. explanation?
 
-The system prompt for `parse_user_query` is the same on every call — it lists allowed genres, moods, and the output format. Caching it with `cache_control: ephemeral` means the first call primes the cache and subsequent calls skip re-processing that text, reducing latency and token cost on repeat interactions.
+`parse_user_query` uses `claude-haiku-4-5` — a fast, cheap model that only needs to extract a JSON object with three fields. `generate_ai_explanation` uses `claude-sonnet-4-6` — a more capable model whose quality difference shows in the conversational, persona-adjusted prose. Using Haiku for the structured extraction step cuts cost and latency on every query without sacrificing output quality where it matters.
 
-### Why a +2.0 genre bonus (double the mood bonus)?
+### Why prompt caching on both Claude calls?
 
-This was an explicit design choice, not an accident. Genre is the most durable part of a listener's taste — a pop fan still wants pop even if their mood varies day to day. Setting genre twice as heavy as mood reflects that intuition. The experiment section shows what happens when you halve that bonus: the rankings diversify but feel less "on genre." Both are defensible; the default leans conservative.
+Both system prompts are identical across calls — the parser prompt lists allowed genres and output format; the explainer prompt provides the persona's few-shot example. Caching both with `cache_control: ephemeral` means repeat queries skip re-processing several hundred tokens on each call, which compounds meaningfully in a session with multiple searches.
+
+### Why five scoring modes instead of one fixed weight set?
+
+One weight set cannot be right for every listener. A gym session needs energy-focused weights; a genre deep-dive needs genre-first. Exposing five presets (`default`, `genre-first`, `mood-first`, `energy-focused`, `vibe`) makes the scoring philosophy explicit and user-selectable rather than hiding a single opinionated choice inside the algorithm. The default is balanced; each variant is documented in `SCORING_MODES` in `recommender.py`.
+
+### Why genre families (partial credit) instead of exact matching only?
+
+Exact genre matching silently excludes adjacent genres — a pop listener never sees indie pop songs without a workaround. The `GENRE_FAMILIES` dictionary assigns 50% of the genre weight to related genres (pop ↔ indie pop, rock ↔ metal, lofi ↔ ambient, hip-hop ↔ r&b, electronic ↔ synthwave/edm). This is a deliberate middle ground: related genres compete but cannot beat an exact genre match.
+
+### Why four AI personas?
+
+The explanation step produces the same retrieved songs every time, but listeners have different relationships with music. A casual user wants excited friend-mode text; a DJ wants BPM and energy language; a critic wants production analysis. Four few-shot persona examples (`baseline`, `casual`, `dj`, `critic`) demonstrate measurably different output from identical inputs — showing that prompting strategy, not model capability, drives tone.
+
+### Why a +2.0 genre bonus (double the mood bonus) in default mode?
+
+Genre is the most durable part of a listener's taste — a pop fan still wants pop even if their mood varies day to day. Setting genre twice as heavy as mood reflects that intuition. The weight experiment section shows what happens when you halve that bonus: rankings diversify but feel less "on genre." Both are defensible; the default leans conservative. Users who want mood-driven results can switch to `mood-first` mode.
 
 ### Trade-offs
 
@@ -382,11 +418,11 @@ The following screenshots are from `python -m src.main` with all four test profi
 
 ## Limitations and Known Issues
 
-- Only works on a 20-song catalog — too small for real diversity in edge-case profiles
-- Exact string matching for genre and mood misses related styles (e.g. "indie pop" ≠ "pop")
-- The +2.0 genre bonus can override the energy signal entirely when both genre and mood match but energy is opposite
-- No user history — every session starts from scratch with the same fixed profile
-- Additional audio features (valence, tempo, danceability, acousticness) are loaded from the CSV but not used in scoring
+- Catalog size limits diversity — some genre searches fill positions 3–5 with weak energy-only matches because no better songs exist in the data
+- Genre families give partial credit for adjacent genres (pop ↔ indie pop, rock ↔ metal) but mood still uses exact string matching — "focused" and "chill" are treated as completely different even when sonically close
+- The +2.0 default genre bonus can override the energy signal entirely when genre and mood both match but energy is opposite; switch to `energy-focused` mode to change this behaviour
+- No user history — every session starts from scratch (the session refinement feature preserves preferences within a session but not across restarts)
+- Tempo (BPM) and acousticness are loaded from the CSV but not used in scoring; valence and danceability are used in `default`, `mood-first`, and `vibe` modes but not in `genre-first`
 
 ---
 
@@ -439,6 +475,8 @@ Claude was used as a coding and design assistant throughout this project.
 
 ```
 applied-ai-system-project/
+├── app.py                     # Streamlit web UI (run with: streamlit run app.py)
+├── eval.py                    # Evaluation runner for scoring-mode comparisons
 ├── assets/
 │   ├── image-1.png            # High-Energy Pop profile output
 │   ├── image-2.png            # Chill Lofi profile output
@@ -446,16 +484,18 @@ applied-ai-system-project/
 │   ├── image-4.png            # Adversarial profile output
 │   └── image-5.png            # Weight experiment output
 ├── data/
-│   └── songs.csv              # 20-song catalog
+│   ├── songs.csv              # 70-song catalog (genre, mood, energy, valence, danceability, …)
+│   └── genre_guide.txt        # Genre background text — second RAG retrieval source
 ├── src/
-│   ├── recommender.py         # Core scoring engine (deterministic)
-│   ├── ai_recommender.py      # Claude API integration (RAG)
-│   ├── chat.py                # Interactive conversational interface
-│   └── main.py                # Batch demo runner
+│   ├── recommender.py         # Core scoring engine: score_song, recommend_songs, SCORING_MODES
+│   ├── ai_recommender.py      # Claude API integration: query parser + RAG explanation generator
+│   ├── agent.py               # Agent-based interface (extended autonomous query loop)
+│   ├── chat.py                # Interactive terminal interface with session memory
+│   └── main.py                # Batch demo runner (four test profiles)
 ├── tests/
-│   └── test_recommender.py    # Unit tests
-├── model_card.md              # Detailed model analysis and evaluation
-├── reflection.md              # Engineering process notes
+│   └── test_recommender.py    # Unit tests (pytest)
+├── model_card.md              # Model analysis, evaluation profiles, bias discussion
+├── reflection.md              # Engineering process and design decisions
 └── requirements.txt
 ```
 
@@ -465,8 +505,8 @@ applied-ai-system-project/
 
 | Package | Purpose |
 |---|---|
-| `anthropic` | Claude API SDK — query parsing and explanation generation |
-| `tabulate` | Pretty-print ranked results as a terminal table |
+| `anthropic` | Claude API SDK — `claude-haiku-4-5` for query parsing, `claude-sonnet-4-6` for explanations |
+| `streamlit` | Web UI framework — `app.py` (run with `streamlit run app.py`) |
+| `tabulate` | Pretty-print ranked results in the terminal chat interface |
 | `pytest` | Unit test runner |
-| `pandas` | Data manipulation (loaded, available for extension) |
-| `streamlit` | UI framework (loaded, available for a web interface) |
+| `pandas` | Data manipulation (available for catalog extensions) |
